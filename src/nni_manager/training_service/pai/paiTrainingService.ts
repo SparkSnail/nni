@@ -92,6 +92,7 @@ class PAITrainingService implements TrainingService {
     public async run(): Promise<void> {
         const restServer: PAIJobRestServer = component.get(PAIJobRestServer);
         await restServer.start();
+
         this.log.info(`PAI Training service rest server listening on: ${restServer.endPoint}`);
         while (!this.stopping) {
             await this.updatePaiToken();
@@ -103,11 +104,11 @@ class PAITrainingService implements TrainingService {
     public async listTrialJobs(): Promise<TrialJobDetail[]> {
         const jobs: TrialJobDetail[] = [];
         
-        this.trialJobsMap.forEach(async (value: PAITrialJobDetail, key: string) => {
+        for (const [key, value] of this.trialJobsMap) { 
             if (value.form.jobType === 'TRIAL') {
                 jobs.push(await this.getTrialJob(key));
             }
-        });
+        };
 
         return Promise.resolve(jobs);
     }

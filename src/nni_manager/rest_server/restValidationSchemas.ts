@@ -28,7 +28,7 @@ export namespace ValidationSchemas {
                 username: joi.string().required(),
                 ip: joi.string().ip().required(),
                 port: joi.number().min(1).max(65535).required(),
-                passwd: joi.string().required(),
+                passwd: joi.string(),
                 sshKeyPath: joi.string(),
                 passphrase: joi.string()
             })),
@@ -143,9 +143,9 @@ export namespace ValidationSchemas {
                 codeDir: joi.string(),
                 classFileName: joi.string(),
                 className: joi.string(),
-                classArgs:joi.any(),
+                classArgs: joi.any(),
                 gpuNum: joi.number().min(0),
-                checkpointDir: joi.string()
+                checkpointDir: joi.string().allow('')
             }),
             tuner: joi.object({
                 builtinTunerName: joi.string().valid('TPE', 'Random', 'Anneal', 'Evolution', 'SMAC', 'BatchTuner', 'GridSearch', 'NetworkMorphism'),
@@ -154,7 +154,7 @@ export namespace ValidationSchemas {
                 className: joi.string(),
                 classArgs: joi.any(),
                 gpuNum: joi.number().min(0),
-                checkpointDir: joi.string()
+                checkpointDir: joi.string().allow('')
             }),
             assessor: joi.object({
                 builtinAssessorName: joi.string().valid('Medianstop', 'Curvefitting'),
@@ -163,7 +163,7 @@ export namespace ValidationSchemas {
                 className: joi.string(),
                 classArgs: joi.any(),
                 gpuNum: joi.number().min(0),
-                checkpointDir: joi.string()
+                checkpointDir: joi.string().allow('')
             }),
             clusterMetaData: joi.array().items(joi.object({
                 key: joi.string(),
@@ -178,7 +178,7 @@ export namespace ValidationSchemas {
         body: {
             id: joi.string().required(),
             revision: joi.number().min(0).required(),
-            params: joi.object(STARTEXPERIMENT.body).required(),
+            params: joi.object(STARTEXPERIMENT.body),
             execDuration: joi.number().required(),
             startTime: joi.number(),
             endTime: joi.number(),
