@@ -101,22 +101,36 @@ class KubeflowTrainingService extends KubernetesTrainingService implements Kuber
         //prepare the runscript
         await this.prepareRunScript(trialLocalTempFolder, trialJobId, trialWorkingFolder, curTrialSequenceId, form);
         //upload files to sotrage
-        const trialJobOutputUrl: string = await this.uploadCodeFiles(trialJobId, trialLocalTempFolder);
-        const trialJobDetail: KubernetesTrialJobDetail = new KubernetesTrialJobDetail(
-            trialJobId,
-            'WAITING',
-            Date.now(),
-            trialWorkingFolder,
-            form,
-            kubeflowJobName,
-            curTrialSequenceId,
-            trialJobOutputUrl
-        );
-
-        // Generate kubeflow job resource config object
-        const kubeflowJobConfig: any = await this.prepareKubeflowConfig(trialJobId, trialWorkingFolder, kubeflowJobName);
-        // Create kubeflow job based on generated kubeflow job resource config
-        await this.kubernetesCRDClient.createKubernetesJob(kubeflowJobConfig);
+        const trialJobOutputUrl: string | undefined = await this.uploadCodeFiles(trialJobId, trialLocalTempFolder);
+        let trialJobDetail: KubernetesTrialJobDetail;
+        if (trialJobOutputUrl) {
+            trialJobDetail = new KubernetesTrialJobDetail(
+                trialJobId,
+                'WAITING',
+                Date.now(),
+                trialWorkingFolder,
+                form,
+                kubeflowJobName,
+                curTrialSequenceId,
+                trialJobOutputUrl
+            );
+            // Generate kubeflow job resource config object
+            const kubeflowJobConfig: any = await this.prepareKubeflowConfig(trialJobId, trialWorkingFolder, kubeflowJobName);
+            
+            // Create kubeflow job based on generated kubeflow job resource config
+            await this.kubernetesCRDClient.createKubernetesJob(kubeflowJobConfig);
+        } else {
+            trialJobDetail = new KubernetesTrialJobDetail(
+                trialJobId,
+                'FAILED',
+                Date.now(),
+                trialWorkingFolder,
+                form,
+                kubeflowJobName,
+                curTrialSequenceId,
+                'submit failed'
+            );
+        }
 
         // Set trial job detail until create Kubeflow job successfully
         this.trialJobsMap.set(trialJobId, trialJobDetail);
@@ -196,7 +210,7 @@ class KubeflowTrainingService extends KubernetesTrainingService implements Kuber
      * @param trialLocalTempFolder
      * return: trialJobOutputUrl
      */
-    private async uploadCodeFiles(trialJobId: string, trialLocalTempFolder: string): Promise<string> {
+    private async uploadCodeFiles(trialJobId: string, trialLocalTempFolder: string): Promise<string | undefined> {
         if (this.kubeflowClusterConfig === undefined) {
             throw new Error('Kubeflow Cluster config is not initialized');
         }
@@ -205,7 +219,7 @@ class KubeflowTrainingService extends KubernetesTrainingService implements Kuber
             throw new Error('Kubeflow Trial config is not initialized');
         }
 
-        let trialJobOutputUrl: string = '';
+        let trialJobOutputUrl: string | undefined = undefined;
 
         assert(this.kubeflowClusterConfig.storage === undefined
             || this.kubeflowClusterConfig.storage === 'azureStorage'
@@ -215,18 +229,28 @@ class KubeflowTrainingService extends KubernetesTrainingService implements Kuber
             if (this.azureStorageClient === undefined) {
                 throw new Error('azureStorageClient is not initialized');
             }
+            let retryCount: number = 1;
             try {
-                //upload local files, including scripts for running the trial and configuration (e.g., hyperparameters) for the trial, to azure storage
-                await AzureStorageClientUtility.uploadDirectory(this.azureStorageClient,
-                                                                `nni/${getExperimentId()}/${trialJobId}`, this.azureStorageShare,
-                                                                `${trialLocalTempFolder}`);
-                //upload code files to azure storage
-                await AzureStorageClientUtility.uploadDirectory(this.azureStorageClient,
-                                                                `nni/${getExperimentId()}/${trialJobId}`, this.azureStorageShare,
-                                                                `${this.kubeflowTrialConfig.codeDir}`);
-
-                trialJobOutputUrl = `https://${this.azureStorageAccountName}.file.core.windows.net/${this.azureStorageShare}` + 
-                                    `/${path.join('nni', getExperimentId(), trialJobId, 'output')}`;
+                while (retryCount >= 0) {
+                    //upload local files, including scripts for running the trial and configuration (e.g., hyperparameters) for the trial, to azure storage
+                    let resultUploadDir1: boolean = await AzureStorageClientUtility.uploadDirectory(this.azureStorageClient,
+                        `nni/${getExperimentId()}/${trialJobId}`, this.azureStorageShare,
+                        `${trialLocalTempFolder}`);
+                    //upload code files to azure storage
+                    let resultUploadDir2: boolean = await AzureStorageClientUtility.uploadDirectory(this.azureStorageClient,
+                        `nni/${getExperimentId()}/${trialJobId}`, this.azureStorageShare,
+                        `${this.kubeflowTrialConfig.codeDir}`);
+                    if (resultUploadDir1 && resultUploadDir2) {
+                        trialJobOutputUrl = `https://${this.azureStorageAccountName}.file.core.windows.net/${this.azureStorageShare}` + 
+                        `/${path.join('nni', getExperimentId(), trialJobId, 'output')}`;
+                        break;
+                    } else {
+                        //wait for 5 seconds to re-upload files
+                        await delay(5000);
+                        this.log.info('Re-upload files to azure-storage');
+                        retryCount -= 1;
+                    }
+                }
             } catch (error) {
                 this.log.error(error);
 
