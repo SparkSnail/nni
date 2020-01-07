@@ -165,6 +165,8 @@ class LocalTrainingService implements TrainingService {
                 this.setTrialJobStatus(trialJob, 'FAILED');
                 try {
                     const state: string = await fs.promises.readFile(path.join(trialJob.workingDirectory, '.nni', 'state'), 'utf8');
+                    this.log.debug(`debug ${trialJob.id} state`);
+                    this.log.debug(state);
                     const match: RegExpMatchArray | null = state.trim()
                         .match(/^(\d+)\s+(\d+)/);
                     if (match !== null) {
@@ -176,6 +178,7 @@ class LocalTrainingService implements TrainingService {
                     }
                 } catch (error) {
                     //ignore
+                    this.log.error(error);
                 }
                 this.log.debug(`trialJob status update: ${trialJobId}, ${trialJob.status}`);
             }
