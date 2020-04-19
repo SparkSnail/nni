@@ -123,7 +123,7 @@ class PAIK8STrainingService extends PAITrainingService {
         //TODO: use HDFS working folder instead
         const trialWorkingFolder: string = path.join(this.expRootDir, 'trials', trialJobId);
         const paiJobName: string = `nni_exp_${this.experimentId}_trial_${trialJobId}`;
-        const logPath: string = path.join(this.paiTrialConfig.nniManagerNFSMountPath, this.experimentId, trialJobId);
+        const logPath: string = path.join(this.paiTrialConfig.nniManagerFileMountPath, this.experimentId, trialJobId);
         const trialJobDetail: PAITrialJobDetail = new PAITrialJobDetail(
             trialJobId,
             'WAITING',
@@ -176,9 +176,10 @@ class PAIK8STrainingService extends PAITrainingService {
                 }
             },
             extras: {
-                'com.microsoft.pai.runtimeplugin': [
+                'storages': [
                     {
-                        plugin: this.paiTrialConfig.paiStoragePlugin
+                        name: this.paiTrialConfig.paiStorageConfigName,
+                        mountPath: this.paiTrialConfig.containerFileMountPath
                     }
                 ],
                 submitFrom: 'submit-job-v2'
@@ -230,7 +231,7 @@ class PAIK8STrainingService extends PAITrainingService {
         this.paiRestServerPort = this.paiJobRestServer.clusterRestServerPort;
 
         // Step 1. Prepare PAI job configuration
-        const trialLocalFolder: string = path.join(this.paiTrialConfig.nniManagerNFSMountPath, this.experimentId, trialJobId);
+        const trialLocalFolder: string = path.join(this.paiTrialConfig.nniManagerFileMountPath, this.experimentId, trialJobId);
         //create trial local working folder locally.
         await execMkdir(trialLocalFolder);
 
@@ -251,7 +252,7 @@ class PAIK8STrainingService extends PAITrainingService {
         
         const nniManagerIp: string = this.nniManagerIpConfig ? this.nniManagerIpConfig.nniManagerIp : getIPV4Address();
         const version: string = this.versionCheck ? await getVersion() : '';
-        const containerWorkingDir: string = `${this.paiTrialConfig.containerNFSMountPath}/${this.experimentId}/${trialJobId}`;
+        const containerWorkingDir: string = `${this.paiTrialConfig.containerFileMountPath}/${this.experimentId}/${trialJobId}`;
         const nniPaiTrialCommand: string = String.Format(
             PAI_K8S_TRIAL_COMMAND_FORMAT,
             `${containerWorkingDir}`,

@@ -288,13 +288,8 @@ def validate_pai_config_path(experiment_config):
                     print_error('Please set memoryMB field, or set resourcePerInstance memoryMB in your own paiConfig!')
                     exit(1)
                 experiment_config['trial']['memoryMB'] = pai_config['taskRoles']['taskrole']['resourcePerInstance']['memoryMB']
-            if experiment_config['trial'].get('paiStoragePlugin') is None:
-                if pai_config.get('extras', {}).get('com.microsoft.pai.runtimeplugin', [{}])[0].get('plugin') is None:
-                    print_error('Please set paiStoragePlugin field, or set plugin in your own paiConfig!')
-                    exit(1)
-                experiment_config['trial']['paiStoragePlugin'] = pai_config['extras']['com.microsoft.pai.runtimeplugin'][0]['plugin']
         else:
-            pai_trial_fields_required_list = ['image', 'gpuNum', 'cpuNum', 'memoryMB', 'paiStoragePlugin']
+            pai_trial_fields_required_list = ['image', 'gpuNum', 'cpuNum', 'memoryMB']
             for trial_field in pai_trial_fields_required_list:
                 if experiment_config['trial'].get(trial_field) is None:
                     print_error('Please set {0} in trial configuration,\

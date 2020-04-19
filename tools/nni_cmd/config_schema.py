@@ -285,9 +285,12 @@ pai_yarn_config_schema = {
 pai_trial_schema = {
     'trial':{
         'codeDir': setPathCheck('codeDir'),
-        'nniManagerNFSMountPath': setPathCheck('nniManagerNFSMountPath'),
-        'containerNFSMountPath': setType('containerNFSMountPath', str),
+        Optional('nniManagerNFSMountPath'): setPathCheck('nniManagerNFSMountPath'),
+        Optional('containerNFSMountPath'): setType('containerNFSMountPath', str),
         'command': setType('command', str),
+        'nniManagerFileMountPath': setPathCheck('nniManagerFileMountPath'),
+        'containerFileMountPath': setType('containerFileMountPath', str),
+        'paiStorageConfigName': setType('paiStorageConfigName', str),
         Optional('gpuNum'): setNumberRange('gpuNum', int, 0, 99999),
         Optional('cpuNum'): setNumberRange('cpuNum', int, 0, 99999),
         Optional('memoryMB'): setType('memoryMB', int),
