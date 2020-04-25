@@ -21,6 +21,7 @@ Currently, we support the following algorithms:
 |[__BOHB__](#BOHB)|BOHB is a follow-up work to Hyperband. It targets the weakness of Hyperband that new configurations are generated randomly without leveraging finished trials. For the name BOHB, HB means Hyperband, BO means Bayesian Optimization. BOHB leverages finished trials by building multiple TPE models, a proportion of new configurations are generated through these models. [Reference Paper](https://arxiv.org/abs/1807.01774)|
 |[__GP Tuner__](#GPTuner)|Gaussian Process Tuner is a sequential model-based optimization (SMBO) approach with Gaussian Process as the surrogate. [Reference Paper](https://papers.nips.cc/paper/4443-algorithms-for-hyper-parameter-optimization.pdf), [Github Repo](https://github.com/fmfn/BayesianOptimization)|
 |[__PPO Tuner__](#PPOTuner)|PPO Tuner is a Reinforcement Learning tuner based on PPO algorithm. [Reference Paper](https://arxiv.org/abs/1707.06347)|
+|[__PBT Tuner__](#PBTTuner)|PBT Tuner is a simple asynchronous optimization algorithm which effectively utilizes a fixed computational budget to jointly optimize a population of models and their hyperparameters to maximize performance. [Reference Paper](https://arxiv.org/abs/1711.09846v1)|
 
 ## Usage of Built-in Tuners
 
@@ -453,6 +454,38 @@ tuner:
   classArgs:
     optimize_mode: maximize
 ```
+
+<a name="PBTTuner"></a>
+
+![](https://placehold.it/15/1589F0/000000?text=+) `PBT Tuner`
+
+> Built-in Tuner Name: **PBTTuner**
+
+**Suggested scenario**
+
+Population Based Training (PBT) bridges and extends parallel search methods and sequential optimization methods. It requires relatively small computation resource, by inheriting weights from currently good-performing ones to explore better ones periodically. With PBTTuner, users finally get a trained model, rather than a configuration that could reproduce the trained model by training the model from scratch. This is because model weights are inherited periodically through the whole search process. PBT can also be seen as a training approach. If you don't need to get a specific configuration, but just expect a good model, PBTTuner is a good choice. [See details](./PBTTuner.md)
+
+**classArgs requirements:**
+
+* **optimize_mode** (*'maximize' or 'minimize'*) - If 'maximize', the tuner will target to maximize metrics. If 'minimize', the tuner will target to minimize metrics.
+* **all_checkpoint_dir** (*str, optional, default = None*) - Directory for trials to load and save checkpoint, if not specified, the directory would be "~/nni/checkpoint/<exp-id>". Note that if the experiment is not local mode, users should provide a path in a shared storage which can be accessed by all the trials.
+* **population_size** (*int, optional, default = 10*) - Number of trials in a population. Each step has this number of trials. In our implementation, one step is running each trial by specific training epochs set by users.
+* **factors** (*tuple, optional, default = (1.2, 0.8)*) - Factors for perturbation of hyperparameters.
+* **fraction** (*float, optional, default = 0.2*) - Fraction for selecting bottom and top trials.
+
+**Usage example**
+
+```yaml
+# config.yml
+tuner:
+  builtinTunerName: PBTTuner
+  classArgs:
+    optimize_mode: maximize
+```
+
+Note that, to use this tuner, your trial code should be modified accordingly, please refer to [the document of PBTTuner](./PBTTuner.md) for details.
+
+
 ## **Reference and Feedback**
 * To [report a bug](https://github.com/microsoft/nni/issues/new?template=bug-report.md) for this feature in GitHub;
 * To [file a feature or improvement request](https://github.com/microsoft/nni/issues/new?template=enhancement.md) for this feature in GitHub;

@@ -27,7 +27,7 @@ prune_config = {
         'model_name': 'naive',
         'pruner_class': AGP_Pruner,
         'config_list': [{
-            'initial_sparsity': 0,
+            'initial_sparsity': 0.,
             'final_sparsity': 0.8,
             'start_epoch': 0,
             'end_epoch': 10,
@@ -53,13 +53,13 @@ prune_config = {
             'op_types': ['Conv2d']
         }]
     },
-    'l1': {
+    'l1filter': {
         'dataset_name': 'cifar10',
         'model_name': 'vgg16',
         'pruner_class': L1FilterPruner,
         'config_list': [{
             'sparsity': 0.5,
-            'op_types': ['default'],
+            'op_types': ['Conv2d'],
             'op_names': ['feature.0', 'feature.24', 'feature.27', 'feature.30', 'feature.34', 'feature.37']
         }]
     },
@@ -69,7 +69,7 @@ prune_config = {
         'pruner_class': ActivationMeanRankFilterPruner,
         'config_list': [{
             'sparsity': 0.5,
-            'op_types': ['default'],
+            'op_types': ['Conv2d'],
             'op_names': ['feature.0', 'feature.24', 'feature.27', 'feature.30', 'feature.34', 'feature.37']
         }]
     },
