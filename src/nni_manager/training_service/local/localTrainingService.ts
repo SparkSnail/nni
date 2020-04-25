@@ -162,7 +162,7 @@ class LocalTrainingService implements TrainingService {
             const alive: boolean = await isAlive(trialJob.pid);
             if (!alive) {
                 trialJob.endTime = Date.now();
-                this.setTrialJobStatus(trialJob, 'FAILED');
+                await this.setTrialJobStatus(trialJob, 'FAILED');
                 try {
                     const state: string = await fs.promises.readFile(path.join(trialJob.workingDirectory, '.nni', 'state'), 'utf8');
                     const match: RegExpMatchArray | null = state.trim()
@@ -170,7 +170,7 @@ class LocalTrainingService implements TrainingService {
                     if (match !== null) {
                         const { 1: code, 2: timestamp } = match;
                         if (parseInt(code, 10) === 0) {
-                            this.setTrialJobStatus(trialJob, 'SUCCEEDED');
+                            await this.setTrialJobStatus(trialJob, 'SUCCEEDED');
                         }
                         trialJob.endTime = parseInt(timestamp, 10);
                     }
@@ -237,12 +237,12 @@ class LocalTrainingService implements TrainingService {
             throw new NNIError(NNIErrorNames.NOT_FOUND, 'Trial job not found');
         }
         if (trialJob.pid === undefined) {
-            this.setTrialJobStatus(trialJob, 'USER_CANCELED');
+            await this.setTrialJobStatus(trialJob, 'USER_CANCELED');
 
             return Promise.resolve();
         }
         tkill(trialJob.pid, 'SIGKILL');
-        this.setTrialJobStatus(trialJob, getJobCancelStatus(isEarlyStopped));
+        await this.setTrialJobStatus(trialJob, getJobCancelStatus(isEarlyStopped));
 
         return Promise.resolve();
     }
@@ -325,9 +325,11 @@ class LocalTrainingService implements TrainingService {
         return Promise.resolve();
     }
 
-    private onTrialJobStatusChanged(trialJob: LocalTrialJobDetail, oldStatus: TrialJobStatus): void {
+    private async onTrialJobStatusChanged(trialJob: LocalTrialJobDetail, oldStatus: TrialJobStatus): void {
         //if job is not running, destory job stream
         if (['SUCCEEDED', 'FAILED', 'USER_CANCELED', 'SYS_CANCELED', 'EARLY_STOPPED'].includes(trialJob.status)) {
+            console.log(`--------------going to delete file stream for ${trialJob.id}`)
+            await delay(5000);
             if (this.jobStreamMap.has(trialJob.id)) {
                 const stream: ts.Stream | undefined = this.jobStreamMap.get(trialJob.id);
                 if (stream === undefined) {
@@ -337,6 +339,7 @@ class LocalTrainingService implements TrainingService {
                 stream.end(0);
                 stream.emit('end');
                 this.jobStreamMap.delete(trialJob.id);
+                console.log(`--------------file stream for ${trialJob.id} is deleted`)
             }
         }
         if (trialJob.gpuIndices !== undefined && trialJob.gpuIndices.length > 0 && this.gpuScheduler !== undefined) {
@@ -460,11 +463,11 @@ class LocalTrainingService implements TrainingService {
         }
     }
 
-    private setTrialJobStatus(trialJob: LocalTrialJobDetail, newStatus: TrialJobStatus): void {
+    private async setTrialJobStatus(trialJob: LocalTrialJobDetail, newStatus: TrialJobStatus): void {
         if (trialJob.status !== newStatus) {
             const oldStatus: TrialJobStatus = trialJob.status;
             trialJob.status = newStatus;
-            this.onTrialJobStatusChanged(trialJob, oldStatus);
+            await this.onTrialJobStatusChanged(trialJob, oldStatus);
         }
     }
 
@@ -520,7 +523,7 @@ class LocalTrainingService implements TrainingService {
                                     runScriptContent.join(getNewLine()), { encoding: 'utf8', mode: 0o777 });
         await this.writeParameterFile(trialJobDetail.workingDirectory, trialJobDetail.form.hyperParameters);
         const trialJobProcess: cp.ChildProcess = runScript(path.join(trialJobDetail.workingDirectory, scriptName));
-        this.setTrialJobStatus(trialJobDetail, 'RUNNING');
+        await this.setTrialJobStatus(trialJobDetail, 'RUNNING');
         trialJobDetail.startTime = Date.now(); // eslint-disable-line require-atomic-updates
         trialJobDetail.pid = trialJobProcess.pid; // eslint-disable-line require-atomic-updates
         this.setExtraProperties(trialJobDetail, resource);
