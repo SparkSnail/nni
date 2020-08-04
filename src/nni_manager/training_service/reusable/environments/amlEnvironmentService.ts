@@ -74,7 +74,7 @@ export class AMLEnvironmentService extends EnvironmentService {
         environments.forEach(async (environment) => {
             const amlClient = (environment as AMLEnvironmentInformation).amlClient;
             if (!amlClient) {
-                throw new Error('AML client not initialized!');
+                return Promise.reject('AML client not initialized!');
             }
             const newStatus = await amlClient.updateStatus(environment.status);
             switch (newStatus.toUpperCase()) {
@@ -90,8 +90,8 @@ export class AMLEnvironmentService extends EnvironmentService {
                     environment.setStatus('SUCCEEDED');
                     break;
                 case 'FAILED':
-                    environment.setStatus(newStatus.toUpperCase() as EnvironmentStatus);
-                    break;
+                    environment.setStatus('FAILED');
+                    return Promise.reject(`AML: job ${environment.envId} is failed!`);
                 case 'STOPPED':
                 case 'STOPPING':
                     environment.setStatus('USER_CANCELED');
