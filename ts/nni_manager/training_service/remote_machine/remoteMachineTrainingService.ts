@@ -70,6 +70,7 @@ class RemoteMachineTrainingService implements TrainingService {
         this.log = getLogger();
         this.log.info('Construct remote machine training service.');
         this.config = flattenConfig(config, 'remote');
+        this.versionCheck = this.config.versionCheck || true;
 
         if (!fs.lstatSync(this.config.trialCodeDirectory).isDirectory()) {
             throw new Error(`codeDir ${this.config.trialCodeDirectory} is not a directory`);

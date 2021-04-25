@@ -73,6 +73,7 @@ class PAITrainingService implements TrainingService {
         this.paiTokenUpdateInterval = 7200000; //2hours
         this.log.info('Construct paiBase training service.');
         this.config = flattenConfig(config, 'openpai');
+        this.versionCheck = this.config.versionCheck || true;
         this.paiJobRestServer = new PAIJobRestServer(this);
         this.paiToken = this.config.token;
         this.protocol = this.config.host.toLowerCase().startsWith('https://') ? 'https' : 'http';

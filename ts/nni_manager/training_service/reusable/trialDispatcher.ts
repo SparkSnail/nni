@@ -104,6 +104,7 @@ class TrialDispatcher implements TrainingService {
         this.gpuScheduler = new GpuScheduler();
 
         this.config = config;
+        this.enableVersionCheck = config.versionCheck || true;
 
         this.enableGpuScheduler = !!config.trialGpuNumber;
         if (this.enableGpuScheduler) {
@@ -535,6 +536,8 @@ class TrialDispatcher implements TrainingService {
                     }
                     const gpuNum = this.config.trialGpuNumber;
                     const result = this.gpuScheduler.scheduleMachine(reusableEnvironments, gpuNum, trial);
+                    this.log.info('----------schedule machine result for trial: ' + trial.id);
+                    this.log.info(result)
                     switch (result.resultType) {
                         case ScheduleResultType.REQUIRE_EXCEED_TOTAL:
                             {

@@ -165,6 +165,7 @@ export interface ExperimentConfig {
     nniManagerIp?: string;
     //useAnnotation: boolean;  // dealed inside nnictl
     debug: boolean;
+    versionCheck?: boolean;
     logLevel?: string;
     experimentWorkingDirectory?: string;
     tunerGpuIndices?: number[];
