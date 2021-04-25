@@ -131,11 +131,38 @@ def set_adl_config(experiment_config, port, config_file_name):
             with open(stderr_full_path, 'a+') as fout:
                 fout.write(json.dumps(json.loads(err_message), indent=4, sort_keys=True, separators=(',', ':')))
         return False, err_message
+    set_V1_common_config(experiment_config, port, config_file_name)
     result, message = setNNIManagerIp(experiment_config, port, config_file_name)
     if not result:
         return result, message
     #set trial_config
     return set_trial_config(experiment_config, port, config_file_name), None
+
+def validate_response(response, config_file_name):
+    err_message = None
+    if not response or not response.status_code == 200:
+        if response is not None:
+            err_message = response.text
+            _, stderr_full_path = get_log_path(config_file_name)
+            with open(stderr_full_path, 'a+') as fout:
+                fout.write(json.dumps(json.loads(err_message), indent=4, sort_keys=True, separators=(',', ':')))
+        print_error('Error:' + err_message)
+        exit(1)
+
+# hack to fix v1 version_check and log_collection bug, need refactor
+def set_V1_common_config(experiment_config, port, config_file_name):
+    version_check = True
+    #debug mode should disable version check
+    if experiment_config.get('debug') is not None:
+        version_check = not experiment_config.get('debug')
+    #validate version check
+    if experiment_config.get('versionCheck') is not None:
+        version_check = experiment_config.get('versionCheck')
+    response = rest_put(cluster_metadata_url(port), json.dumps({'version_check': version_check}), REST_TIME_OUT)
+    validate_response(response, config_file_name)
+    if experiment_config.get('logCollection'):
+        response = rest_put(cluster_metadata_url(port), json.dumps({'log_collection': experiment_config.get('logCollection')}), REST_TIME_OUT)
+        validate_response(response, config_file_name)
 
 def setNNIManagerIp(experiment_config, port, config_file_name):
     '''set nniManagerIp'''
@@ -167,6 +194,7 @@ def set_kubeflow_config(experiment_config, port, config_file_name):
             with open(stderr_full_path, 'a+') as fout:
                 fout.write(json.dumps(json.loads(err_message), indent=4, sort_keys=True, separators=(',', ':')))
         return False, err_message
+    set_V1_common_config(experiment_config, port, config_file_name)
     result, message = setNNIManagerIp(experiment_config, port, config_file_name)
     if not result:
         return result, message
@@ -186,6 +214,7 @@ def set_frameworkcontroller_config(experiment_config, port, config_file_name):
             with open(stderr_full_path, 'a+') as fout:
                 fout.write(json.dumps(json.loads(err_message), indent=4, sort_keys=True, separators=(',', ':')))
         return False, err_message
+    set_V1_common_config(experiment_config, port, config_file_name)
     result, message = setNNIManagerIp(experiment_config, port, config_file_name)
     if not result:
         return result, message
@@ -212,7 +241,9 @@ def set_experiment_v1(experiment_config, mode, port, config_file_name):
     request_data['experimentName'] = experiment_config['experimentName']
     request_data['trialConcurrency'] = experiment_config['trialConcurrency']
     request_data['maxExecDuration'] = experiment_config['maxExecDuration']
+    request_data['maxExperimentDuration'] = str(experiment_config['maxExecDuration']) + 's'
     request_data['maxTrialNum'] = experiment_config['maxTrialNum']
+    request_data['maxTrialNumber'] = experiment_config['maxTrialNum']
     request_data['searchSpace'] = experiment_config.get('searchSpace')
     request_data['trainingServicePlatform'] = experiment_config.get('trainingServicePlatform')
     # hack for hotfix, fix config.trainingService undefined error, need refactor
@@ -368,14 +399,14 @@ def launch_experiment(args, experiment_config, mode, experiment_id, config_versi
         code_dir = expand_annotations(experiment_config['trial']['codeDir'], path, nas_mode=nas_mode)
         experiment_config['trial']['codeDir'] = code_dir
         search_space = generate_search_space(code_dir)
-        experiment_config['searchSpace'] = json.dumps(search_space)
+        experiment_config['searchSpace'] = search_space
         assert search_space, ERROR_INFO % 'Generated search space is empty'
     elif config_version == 1:
         if experiment_config.get('searchSpacePath'):
             search_space = get_json_content(experiment_config.get('searchSpacePath'))
-            experiment_config['searchSpace'] = json.dumps(search_space)
+            experiment_config['searchSpace'] = search_space
         else:
-            experiment_config['searchSpace'] = json.dumps('')
+            experiment_config['searchSpace'] = ''
 
     # check rest server
     running, _ = check_rest_server(args.port)
@@ -504,12 +535,12 @@ def manage_stopped_experiment(args, mode):
     experiments_config.update_experiment(args.id, 'port', args.port)
     assert 'trainingService' in experiment_config or 'trainingServicePlatform' in experiment_config
     try:
-        if 'trainingService' in experiment_config:
-            experiment_config['experimentWorkingDirectory'] = experiments_dict[args.id]['logDir']
-            launch_experiment(args, experiment_config, mode, experiment_id, 2)
-        else:
+        if 'trainingServicePlatform' in experiment_config:
             experiment_config['logDir'] = experiments_dict[args.id]['logDir']
             launch_experiment(args, experiment_config, mode, experiment_id, 1)
+        else:
+            experiment_config['experimentWorkingDirectory'] = experiments_dict[args.id]['logDir']
+            launch_experiment(args, experiment_config, mode, experiment_id, 2)
     except Exception as exception:
         restServerPid = Experiments().get_all_experiments().get(experiment_id, {}).get('pid')
         if restServerPid:
